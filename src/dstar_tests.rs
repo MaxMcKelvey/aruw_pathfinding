@@ -71,4 +71,46 @@ mod dstar_tests {
 
         assert_eq!(path, vec![(0, 0), (1, 1), (2, 2), (2, 3), (2, 4), (3, 5), (4, 5), (5, 5)]);
     }
+    
+    #[test]
+    fn check_itr() {
+        let mut a = dstar::DStar::new(
+            vec![vec![]],
+            (5, 5)
+        );
+        
+        let occ_sqrs = vec![];
+        
+        let path = a.get_path_rust(
+            (0, 0),
+            (4, 4),
+            occ_sqrs,
+            true
+        ).unwrap();
+
+        assert_eq!(path, vec![(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]);
+
+        let occ_sqrs2 = vec![vec![(2, 2), (2, 1), (2, 0)]];
+
+        let path2 = a.get_path_rust(
+            (0, 0),
+            (4, 4),
+            occ_sqrs2,
+            true
+        ).unwrap();
+
+        assert_eq!(path2, vec![(0, 0), (1, 1), (1, 2), (2, 3), (3, 4), (4, 4)]);
+
+
+        let occ_sqrs3 = vec![];
+
+        let path2 = a.get_path_rust(
+            (0, 0),
+            (4, 4),
+            occ_sqrs3,
+            true
+        ).unwrap();
+
+        assert_eq!(path2, vec![(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]);
+    }
 }

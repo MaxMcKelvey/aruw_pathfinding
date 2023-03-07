@@ -10,6 +10,7 @@ struct Node {
     g: i32,
     h: i32,
     parent: Option<(usize, usize)>,
+    children: Vec<(usize, usize)>,
     // parent: Option<Box<Node>>,
 }
 
@@ -53,37 +54,45 @@ impl DStar {
         self.grid[pt.0][pt.1].parent.unwrap()
     }
 
-    fn closed_neighbors_to_open_list(
-        &mut self,
-        // pt: (usize, usize),
-        vec: &Vec<Vec<(usize, usize)>>,
-        // grid_size: (usize, usize),
-        // closed_list: &mut Vec<(usize, usize)>,
-        // open_list: &mut PriorityQueue<(usize, usize), i32>
-    ) {
+    fn remove_from_closed_list(&mut self, pt: (usize, usize)) {
+        let closed_idx_res = self.closed_list.iter().position(|&check_pt| check_pt == pt);
+
+        if closed_idx_res != None {
+            self.closed_list.remove(closed_idx_res.unwrap());
+        }
+    }
+
+    fn closed_neighbors_to_open_list(&mut self, vec: &Vec<Vec<(usize, usize)>>) {
         for arr in vec.iter() {
             for pt in arr.iter() {
                 for xmod in 0..3 {
                     for ymod in 0..3 {
-                        if xmod == 1 && ymod == 1 { continue; }
+                        if xmod == 1 && ymod == 1 {
+                            continue;
+                        }
 
-                        if (pt.0 + xmod) as i32 - 1 < 0 || pt.0 + xmod - 1 >= self.grid_size.0
-                        || (pt.1 + ymod) as i32 - 1 < 0 || pt.1 + ymod - 1 >= self.grid_size.1 {
+                        if (pt.0 + xmod) as i32 - 1 < 0
+                            || pt.0 + xmod - 1 >= self.grid_size.0
+                            || (pt.1 + ymod) as i32 - 1 < 0
+                            || pt.1 + ymod - 1 >= self.grid_size.1
+                        {
                             // println!("out of bounds");
                             continue;
                         }
-                        
+
                         let new_pt = ((pt.0 + xmod - 1), (pt.1 + ymod - 1));
 
                         if self.grid[new_pt.0][new_pt.1].occupied {
                             continue;
                         }
 
-                        let closed_idx_res = self.closed_list.iter().position(|&pt| pt == new_pt);
+                        let closed_idx_res =
+                            self.closed_list.iter().position(|&check_pt| check_pt == new_pt);
 
                         if closed_idx_res != None {
                             self.closed_list.remove(closed_idx_res.unwrap());
-                            self.open_list.push(new_pt, self.grid[new_pt.0][new_pt.1].f);
+                            // self.open_list.push(new_pt, self.grid[pt.0][pt.1].f);
+                            self.open_list.push(new_pt, 1);
                         }
                     }
                 }
@@ -101,18 +110,44 @@ impl DStar {
         let mut old_squares: Vec<Vec<(usize, usize)>> = Vec::new();
         for arr in self.old_inst_occ_squares.iter() {
             let mut vec: Vec<(usize, usize)> = Vec::new();
-            for pt in arr.iter() {
+            for &pt in arr.iter() {
                 self.grid[pt.0][pt.1].occupied = false;
-                vec.push(*pt);
+                vec.push(pt);
             }
             old_squares.push(vec);
         }
 
         for arr in occupied_squares.iter() {
-            for pt in arr.iter() {
+            for &pt in arr.iter() {
+                // println!("Removing pt: {:?}", pt);
                 self.grid[pt.0][pt.1].occupied = true;
+
+                let mut unvisited_children: Vec<(usize, usize)> = vec![];
+                // let mut visited_children: Vec<(usize, usize)> = vec![];
+
+                unvisited_children.push(pt);
+                while unvisited_children.len() > 0 {
+                    let child = unvisited_children.pop().unwrap();
+                    self.remove_from_closed_list(child);
+                    self.open_list.remove(&child);
+                    // visited_children.push(child);
+                    self.grid[child.0][child.1].parent = None;
+
+                    self.grid[child.0][child.1]
+                        .children
+                        .iter()
+                        .for_each(|&ch| unvisited_children.push(ch));
+
+                    self.grid[child.0][child.1].children = vec![];
+                }
             }
         }
+
+        // println!("closed list to open list:");
+        // println!("cl: {:?}", self.closed_list);
+        // if self.grid[0][0].parent != None {
+        //     println!("0:0 parent: {:?}", self.grid[0][0].parent.unwrap());
+        // }
 
         if start == self.old_start && goal == self.old_goal {
             // add squares in closed list touching all touched
@@ -129,8 +164,17 @@ impl DStar {
 
         let mut target_found = false;
 
+        // println!("cl: {:?}", self.closed_list);
+        // let open_list = &self.open_list;
+        // print!("ol: ");
+        // for item in open_list.into_iter() {
+        //     print!("{:?}, ", item.0);
+        // }
+        // println!("");
+
         while self.open_list.len() > 0 && !target_found {
             let (pt, _) = self.open_list.pop().unwrap();
+            self.closed_list.push(pt);
 
             if debug {
                 println!("looking at point: {:?}", pt);
@@ -150,24 +194,27 @@ impl DStar {
                         continue;
                     }
 
-                    if (pt.0 + xmod) as i32 - 1 < 0 || pt.0 + xmod - 1 >= self.grid_size.0
-                    || (pt.1 + ymod) as i32 - 1 < 0 || pt.1 + ymod - 1 >= self.grid_size.1 {
+                    if (pt.0 + xmod) as i32 - 1 < 0
+                        || pt.0 + xmod - 1 >= self.grid_size.0
+                        || (pt.1 + ymod) as i32 - 1 < 0
+                        || pt.1 + ymod - 1 >= self.grid_size.1
+                    {
                         // println!("out of bounds");
                         continue;
                     }
-                    
+
                     let new_pt = ((pt.0 + xmod - 1), (pt.1 + ymod - 1));
 
                     if self.grid[new_pt.0][new_pt.1].occupied {
                         continue;
                     }
-                    
+
                     let check_open_list = self.open_list.get_priority(&new_pt);
-                    
+
                     let g = Self::get_g(pt, new_pt) + self.grid[pt.0][pt.1].g;
                     let h = Self::get_h(start, new_pt);
                     let f = g + h;
-                    
+
                     if self.closed_list.contains(&new_pt) {
                         // continue;
                         if self.grid[new_pt.0][new_pt.1].f < f {
@@ -181,12 +228,24 @@ impl DStar {
                         }
                     }
 
+                    let node_read_only = &self.grid[new_pt.0 as usize][new_pt.1 as usize];
+                    if node_read_only.parent != None {
+                        let parent = node_read_only.parent.unwrap();
+                        let idx = self.grid[parent.0][parent.1]
+                            .children
+                            .iter()
+                            .position(|&pt| pt == new_pt)
+                            .unwrap();
+                        self.grid[parent.0][parent.1].children.remove(idx);
+                    }
+
                     let mut node = &mut self.grid[new_pt.0 as usize][new_pt.1 as usize];
 
                     node.g = g;
                     node.h = h;
                     node.f = f;
                     node.parent = Some(pt);
+                    self.grid[pt.0][pt.1].children.push(new_pt);
 
                     self.open_list.push(new_pt, -f);
 
@@ -195,9 +254,19 @@ impl DStar {
                     }
                 }
             }
+        }
 
-            self.closed_list.push(pt);
-        }        
+        self.old_inst_occ_squares = occupied_squares;
+        self.old_goal = goal;
+        self.old_start = start;
+
+        // println!("cl: {:?}", self.closed_list);
+        // let open_list = &self.open_list;
+        // print!("ol: ");
+        // for item in open_list.into_iter() {
+        //     print!("{:?}, ", item.0);
+        // }
+        // println!("");
 
         if !target_found {
             return Err("Target not found");
@@ -210,7 +279,7 @@ impl DStar {
             path.push(curr);
             curr = Self::get_parent(&self, curr);
         }
-        
+
         path.push(goal);
 
         if debug {
@@ -224,10 +293,7 @@ impl DStar {
 #[pymethods]
 impl DStar {
     #[new]
-    pub fn new(
-        occupied_squares: Vec<Vec<(usize, usize)>>,
-        grid_size: (usize, usize),
-    ) -> Self {
+    pub fn new(occupied_squares: Vec<Vec<(usize, usize)>>, grid_size: (usize, usize)) -> Self {
         let mut grid: Vec<Vec<Node>> = Vec::new();
         for _x in 0..grid_size.0 {
             let mut row: Vec<Node> = Vec::new();
@@ -238,6 +304,7 @@ impl DStar {
                     g: 0,
                     h: 0,
                     parent: None,
+                    children: vec![],
                 });
             }
             grid.push(row);
