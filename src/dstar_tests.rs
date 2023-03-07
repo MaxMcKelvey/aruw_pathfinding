@@ -1,3 +1,4 @@
+#[cfg(test)]
 mod dstar_tests {
     use crate::{dstar};
 
@@ -8,7 +9,7 @@ mod dstar_tests {
             (2, 2)
         );
         
-        let path = a.get_path(
+        let path = a.get_path_rust(
             (0, 0),
             (0, 0),
             vec![],
@@ -25,7 +26,7 @@ mod dstar_tests {
             (2, 2)
         );
         
-        let path = a.get_path(
+        let path = a.get_path_rust(
             (0, 0),
             (1, 1),
             vec![],
@@ -42,7 +43,7 @@ mod dstar_tests {
             (6, 6)
         );
 
-        let path = a.get_path(
+        let path = a.get_path_rust(
             (0, 0),
             (5, 5),
             vec![],
@@ -61,7 +62,7 @@ mod dstar_tests {
         
         let occ_sqrs = vec![vec![(3, 1), (3, 2), (3, 3), (3, 4)]];
         
-        let path = a.get_path(
+        let path = a.get_path_rust(
             (0, 0),
             (5, 5),
             occ_sqrs,

@@ -42,11 +42,11 @@ impl AStar {
         self.grid[pt.0][pt.1].parent.unwrap()
     }
 
-    pub fn get_path(
+    pub fn get_path_rust(
         &mut self,
         start: (usize, usize),
         goal: (usize, usize),
-        occupied_squares: Vec<(usize, usize)>,
+        occupied_squares: Vec<Vec<(usize, usize)>>,
         grid_size: (usize, usize),
         debug: bool,
     ) -> Result<Vec<(usize, usize)>, &'static str> {
@@ -67,8 +67,10 @@ impl AStar {
             self.grid.push(row);
         }
 
-        for pt in occupied_squares.iter() {
-            self.grid[pt.0][pt.1].occupied = true;
+        for arr in occupied_squares.iter() {
+            for pt in arr {
+                self.grid[pt.0][pt.1].occupied = true;
+            }
         }
 
         let mut open_list = PriorityQueue::new();
@@ -180,15 +182,15 @@ impl AStar {
         }
     }
 
-    pub fn get_path_python(
+    pub fn get_path(
         &mut self,
         _py: Python,
         start: (usize, usize),
         goal: (usize, usize),
-        occupied_squares: Vec<(usize, usize)>,
+        occupied_squares: Vec<Vec<(usize, usize)>>,
         grid_size: (usize, usize),
     ) -> PyResult<Py<PyList>> {
-        let path = Self::get_path(self, start, goal, occupied_squares, grid_size, false).unwrap();
+        let path = Self::get_path_rust(self, start, goal, occupied_squares, grid_size, false).unwrap();
         // let mut path_reversed: Vec<(usize, usize)> = path.into_iter().rev().collect();
         // let mut python_path = path.into_iter().rev().map(|pt| PyTuple::new(_py, pt.into_py(_py))).collect();
         let python_path = PyList::empty(_py);

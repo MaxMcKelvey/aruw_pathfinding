@@ -26,7 +26,7 @@ mod astar_tests {
     fn check_goal_is_start() {
         let mut a = astar::AStar::new();
         
-        let path = a.get_path(
+        let path = a.get_path_rust(
             (0, 0),
             (0, 0),
             vec![],
@@ -41,7 +41,7 @@ mod astar_tests {
     fn check_goal_one_away_start() {
         let mut a = astar::AStar::new();
         
-        let path = a.get_path(
+        let path = a.get_path_rust(
             (0, 0),
             (1, 1),
             vec![],
@@ -56,7 +56,7 @@ mod astar_tests {
     fn check_larger_empty() {
         let mut a = astar::AStar::new();
         
-        let path = a.get_path(
+        let path = a.get_path_rust(
             (0, 0),
             (5, 5),
             vec![],
@@ -70,9 +70,9 @@ mod astar_tests {
     #[test]
     fn check_larger_with_wall() {
         let mut a = astar::AStar::new();
-        let occ_sqrs = vec![(3, 1), (3, 2), (3, 3), (3, 4)];
+        let occ_sqrs = vec![vec![(3, 1), (3, 2), (3, 3), (3, 4)]];
         
-        let path = a.get_path(
+        let path = a.get_path_rust(
             (0, 0),
             (5, 5),
             occ_sqrs,
