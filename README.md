@@ -16,3 +16,7 @@ maturin develop
 
 The rust tests work as desired despite documents stating that it wouldn't work.
 
+```
+cargo test
+```
+

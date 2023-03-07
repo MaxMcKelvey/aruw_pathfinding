@@ -13,6 +13,7 @@ fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
 fn aruw_pathfinding(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
     m.add_class::<astar::AStar>()?;
+    m.add_class::<dstar::DStar>()?;
     Ok(())
 }
 

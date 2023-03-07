@@ -14,16 +14,23 @@ struct Node {
 }
 
 #[pyclass]
-pub struct AStar {
+pub struct DStar {
     // first_time: bool,
     grid: Vec<Vec<Node>>,
-    grid_backup: Vec<Vec<Node>>,
     grid_size: (usize, usize),
-    start: (usize, usize),
-    end: (usize, usize),
+    // old_grid: Vec<Vec<Node>>,
+    old_start: (usize, usize),
+    old_goal: (usize, usize),
+    // old_open_list: &'static PriorityQueue<(usize, usize), i32>,
+    // old_closed_list: &'static Vec<(usize, usize)>,
+    // old_open_list: PriorityQueue<(usize, usize), i32>,
+    // old_closed_list: Vec<(usize, usize)>,
+    open_list: PriorityQueue<(usize, usize), i32>,
+    closed_list: Vec<(usize, usize)>,
+    old_inst_occ_squares: Vec<Vec<(usize, usize)>>,
 }
 
-impl AStar {
+impl DStar {
     fn get_g(parent: (usize, usize), pt: (usize, usize)) -> i32 {
         if parent.0 == pt.0 || parent.1 == pt.1 {
             10
@@ -46,24 +53,84 @@ impl AStar {
         self.grid[pt.0][pt.1].parent.unwrap()
     }
 
-    pub fn get_path_first_iteration(
+    fn closed_neighbors_to_open_list(
+        &mut self,
+        // pt: (usize, usize),
+        vec: &Vec<Vec<(usize, usize)>>,
+        // grid_size: (usize, usize),
+        // closed_list: &mut Vec<(usize, usize)>,
+        // open_list: &mut PriorityQueue<(usize, usize), i32>
+    ) {
+        for arr in vec.iter() {
+            for pt in arr.iter() {
+                for xmod in 0..3 {
+                    for ymod in 0..3 {
+                        if xmod == 1 && ymod == 1 { continue; }
+
+                        if (pt.0 + xmod) as i32 - 1 < 0 || pt.0 + xmod - 1 >= self.grid_size.0
+                        || (pt.1 + ymod) as i32 - 1 < 0 || pt.1 + ymod - 1 >= self.grid_size.1 {
+                            // println!("out of bounds");
+                            continue;
+                        }
+                        
+                        let new_pt = ((pt.0 + xmod - 1), (pt.1 + ymod - 1));
+
+                        if self.grid[new_pt.0][new_pt.1].occupied {
+                            continue;
+                        }
+
+                        let closed_idx_res = self.closed_list.iter().position(|&pt| pt == new_pt);
+
+                        if closed_idx_res != None {
+                            self.closed_list.remove(closed_idx_res.unwrap());
+                            self.open_list.push(new_pt, self.grid[new_pt.0][new_pt.1].f);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn get_path(
         &mut self,
         start: (usize, usize),
         goal: (usize, usize),
-        occupied_squares: Vec<(usize, usize)>,
+        occupied_squares: Vec<Vec<(usize, usize)>>,
         debug: bool,
     ) -> Result<Vec<(usize, usize)>, &'static str> {
+        let mut old_squares: Vec<Vec<(usize, usize)>> = Vec::new();
+        for arr in self.old_inst_occ_squares.iter() {
+            let mut vec: Vec<(usize, usize)> = Vec::new();
+            for pt in arr.iter() {
+                self.grid[pt.0][pt.1].occupied = false;
+                vec.push(*pt);
+            }
+            old_squares.push(vec);
+        }
 
-        let mut open_list = PriorityQueue::new();
-        let mut closed_list: Vec<(usize, usize)> = Vec::new();
+        for arr in occupied_squares.iter() {
+            for pt in arr.iter() {
+                self.grid[pt.0][pt.1].occupied = true;
+            }
+        }
 
-        open_list.push(goal, 0);
-        self.grid[goal.0][goal.1].f = 0;
+        if start == self.old_start && goal == self.old_goal {
+            // add squares in closed list touching all touched
+            //          occupied_squares into the open_list
+            self.closed_neighbors_to_open_list(&old_squares);
+            self.closed_neighbors_to_open_list(&occupied_squares);
+        } else {
+            self.open_list = PriorityQueue::new();
+            self.closed_list = Vec::new();
+
+            self.open_list.push(goal, 0);
+            self.grid[goal.0][goal.1].f = 0;
+        }
 
         let mut target_found = false;
 
-        while open_list.len() > 0 && !target_found {
-            let (pt, _) = open_list.pop().unwrap();
+        while self.open_list.len() > 0 && !target_found {
+            let (pt, _) = self.open_list.pop().unwrap();
 
             if debug {
                 println!("looking at point: {:?}", pt);
@@ -95,13 +162,13 @@ impl AStar {
                         continue;
                     }
                     
-                    let check_open_list = open_list.get_priority(&new_pt);
+                    let check_open_list = self.open_list.get_priority(&new_pt);
                     
                     let g = Self::get_g(pt, new_pt) + self.grid[pt.0][pt.1].g;
                     let h = Self::get_h(start, new_pt);
                     let f = g + h;
                     
-                    if closed_list.contains(&new_pt) {
+                    if self.closed_list.contains(&new_pt) {
                         // continue;
                         if self.grid[new_pt.0][new_pt.1].f < f {
                             continue;
@@ -121,7 +188,7 @@ impl AStar {
                     node.f = f;
                     node.parent = Some(pt);
 
-                    open_list.push(new_pt, -f);
+                    self.open_list.push(new_pt, -f);
 
                     if debug {
                         println!("new_pt: {:?}, g: {}, h: {}, f: {}", new_pt, g, h, f);
@@ -129,7 +196,7 @@ impl AStar {
                 }
             }
 
-            closed_list.push(pt);
+            self.closed_list.push(pt);
         }        
 
         if !target_found {
@@ -155,13 +222,13 @@ impl AStar {
 }
 
 #[pymethods]
-impl AStar {
+impl DStar {
     #[new]
     pub fn new(
         occupied_squares: Vec<Vec<(usize, usize)>>,
         grid_size: (usize, usize),
     ) -> Self {
-        let grid: Vec<Vec<Node>> = Vec::new();
+        let mut grid: Vec<Vec<Node>> = Vec::new();
         for _x in 0..grid_size.0 {
             let mut row: Vec<Node> = Vec::new();
             for _y in 0..grid_size.1 {
@@ -182,12 +249,20 @@ impl AStar {
             }
         }
 
-        AStar {
+        let mut open_list: PriorityQueue<(usize, usize), i32> = PriorityQueue::new();
+
+        open_list.push((0, 0), 0);
+        grid[0][0].f = 0;
+
+        DStar {
             grid: grid,
-            grid_backup: grid,
+            // old_grid: grid,
             grid_size: grid_size,
-            start: (0, 0),
-            end: (0, 0)
+            old_start: (0, 0),
+            old_goal: (0, 0),
+            open_list: open_list,
+            closed_list: vec![],
+            old_inst_occ_squares: vec![],
         }
     }
 
@@ -196,10 +271,9 @@ impl AStar {
         _py: Python,
         start: (usize, usize),
         goal: (usize, usize),
-        occupied_squares: Vec<(usize, usize)>,
-        grid_size: (usize, usize),
+        occupied_squares: Vec<Vec<(usize, usize)>>,
     ) -> PyResult<Py<PyList>> {
-        let path = Self::get_path(self, start, goal, occupied_squares, grid_size, false).unwrap();
+        let path = Self::get_path(self, start, goal, occupied_squares, false).unwrap();
         // let mut path_reversed: Vec<(usize, usize)> = path.into_iter().rev().collect();
         // let mut python_path = path.into_iter().rev().map(|pt| PyTuple::new(_py, pt.into_py(_py))).collect();
         let python_path = PyList::empty(_py);
