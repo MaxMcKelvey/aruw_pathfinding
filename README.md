@@ -20,3 +20,17 @@ The rust tests work as desired despite documents stating that it wouldn't work.
 cargo test
 ```
 
+In Python:
+
+```py
+import aruw_pathfinding
+
+astar = aruw_pathfinding.AStar()
+
+start = (0, 0)
+goal = (1, 1)
+occupied_squares = []
+grid_size = (2, 2)
+
+path = astar.get_path(start, goal, occupied_squares, grid_size)
+```
