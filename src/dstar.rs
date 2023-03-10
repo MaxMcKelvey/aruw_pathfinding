@@ -1,5 +1,6 @@
 use priority_queue::PriorityQueue;
 use pyo3::prelude::*;
+use pyo3::exceptions::PyTypeError;
 use pyo3::types::{PyList, PyTuple};
 
 struct Node {
@@ -142,12 +143,6 @@ impl DStar {
                 }
             }
         }
-
-        // println!("closed list to open list:");
-        // println!("cl: {:?}", self.closed_list);
-        // if self.grid[0][0].parent != None {
-        //     println!("0:0 parent: {:?}", self.grid[0][0].parent.unwrap());
-        // }
 
         if start == self.old_start && goal == self.old_goal {
             // add squares in closed list touching all touched
@@ -340,16 +335,18 @@ impl DStar {
         goal: (usize, usize),
         occupied_squares: Vec<Vec<(usize, usize)>>,
     ) -> PyResult<Py<PyList>> {
-        let path = Self::get_path_rust(self, start, goal, occupied_squares, false).unwrap();
-        // let mut path_reversed: Vec<(usize, usize)> = path.into_iter().rev().collect();
-        // let mut python_path = path.into_iter().rev().map(|pt| PyTuple::new(_py, pt.into_py(_py))).collect();
-        let python_path = PyList::empty(_py);
-        for node in path.into_iter() {
-            let py_tuple = PyTuple::new(_py, &[node.0.into_py(_py), node.1.into_py(_py)]);
-            python_path.append(py_tuple)?;
+        let path_res = Self::get_path_rust(self, start, goal, occupied_squares, false);
+        return match path_res {
+            Ok(path) => {
+                let python_path = PyList::empty(_py);
+                for node in path.into_iter() {
+                    let py_tuple = PyTuple::new(_py, &[node.0.into_py(_py), node.1.into_py(_py)]);
+                    python_path.append(py_tuple)?;
+                }
+        
+                Ok(python_path.into_py(_py))
+            },
+            Err(error) => Err(PyErr::new::<PyTypeError, _>(error)),
         }
-
-        // Ok(path_reversed)
-        Ok(python_path.into_py(_py))
     }
 }

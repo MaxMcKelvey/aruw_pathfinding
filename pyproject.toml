@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "aruw-pathfinding"
-version = "0.2.1"
+version = "0.2.2"
 description = "A* and D* algorithms for pathfinding from an input list squares"
 # authors = ["Max McKelvey"]
 license = {file = "./LICENSE"}

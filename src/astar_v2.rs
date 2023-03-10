@@ -4,7 +4,8 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::types::{PyList, PyTuple};
 
 struct Node {
-    occupied: bool,
+    permanent_occupied: bool,
+    dynamic_occupied: bool,
     f: i32,
     g: i32,
     h: i32,
@@ -12,12 +13,13 @@ struct Node {
 }
 
 #[pyclass]
-pub struct AStar {
+pub struct AStarV2 {
     // first_time: bool,
     grid: Vec<Vec<Node>>,
+    grid_size: (usize, usize),
 }
 
-impl AStar {
+impl AStarV2 {
     fn get_g(parent: (usize, usize), pt: (usize, usize)) -> i32 {
         if parent.0 == pt.0 || parent.1 == pt.1 {
             10
@@ -45,29 +47,20 @@ impl AStar {
         start: (usize, usize),
         goal: (usize, usize),
         occupied_squares: Vec<Vec<(usize, usize)>>,
-        grid_size: (usize, usize),
         debug: bool,
     ) -> Result<Vec<(usize, usize)>, &'static str> {
-        self.grid = Vec::new();
-        for _x in 0..grid_size.0 {
-            let mut row: Vec<Node> = Vec::new();
-            for _y in 0..grid_size.1 {
-                row.push(Node {
-                    occupied: false,
-                    f: 0,
-                    g: 0,
-                    h: 0,
-                    parent: None,
-                });
-            }
-            self.grid.push(row);
-        }
 
-        for arr in occupied_squares.iter() {
-            for pt in arr {
-                self.grid[pt.0][pt.1].occupied = true;
-            }
-        }
+        (0..self.grid_size.0).for_each(|i| (0..self.grid_size.1).for_each(
+            |j| self.grid[i][j].dynamic_occupied = false
+        ));
+
+        // occupied_squares.iter().for_each(|arr| arr.iter().for_each(
+        //     |&pt| self.grid[pt.0][pt.1].dynamic_occupied = true
+        // ));
+
+        occupied_squares.iter().flatten().for_each(
+            |&pt| self.grid[pt.0][pt.1].dynamic_occupied = true
+        );
 
         let mut open_list = PriorityQueue::new();
         let mut closed_list: Vec<(usize, usize)> = Vec::new();
@@ -98,15 +91,19 @@ impl AStar {
                         continue;
                     }
 
-                    if (pt.0 + xmod) as i32 - 1 < 0 || pt.0 + xmod - 1 >= grid_size.0
-                    || (pt.1 + ymod) as i32 - 1 < 0 || pt.1 + ymod - 1 >= grid_size.1 {
+                    if (pt.0 + xmod) as i32 - 1 < 0 || pt.0 + xmod - 1 >= self.grid_size.0
+                    || (pt.1 + ymod) as i32 - 1 < 0 || pt.1 + ymod - 1 >= self.grid_size.1 {
                         // println!("out of bounds");
                         continue;
                     }
                     
                     let new_pt = ((pt.0 + xmod - 1), (pt.1 + ymod - 1));
 
-                    if self.grid[new_pt.0][new_pt.1].occupied {
+                    if self.grid[new_pt.0][new_pt.1].dynamic_occupied {
+                        continue;
+                    }
+                    
+                    if self.grid[new_pt.0][new_pt.1].permanent_occupied {
                         continue;
                     }
                     
@@ -170,11 +167,35 @@ impl AStar {
 }
 
 #[pymethods]
-impl AStar {
+impl AStarV2 {
     #[new]
-    pub fn new() -> Self {
-        AStar {
-            grid: vec![]
+    pub fn new(
+        occupied_squares: Vec<Vec<(usize, usize)>>,
+        grid_size: (usize, usize)
+    ) -> Self {
+        let mut grid: Vec<Vec<Node>> = Vec::new();
+        for _x in 0..grid_size.0 {
+            let mut row: Vec<Node> = Vec::new();
+            for _y in 0..grid_size.1 {
+                row.push(Node {
+                    permanent_occupied: false,
+                    dynamic_occupied: false,
+                    f: 0,
+                    g: 0,
+                    h: 0,
+                    parent: None,
+                });
+            }
+            grid.push(row);
+        }
+
+        occupied_squares.iter().flatten().for_each(
+            |&pt| grid[pt.0][pt.1].permanent_occupied = true
+        );
+
+        AStarV2 {
+            grid: grid,
+            grid_size: grid_size,
         }
     }
 
@@ -184,9 +205,8 @@ impl AStar {
         start: (usize, usize),
         goal: (usize, usize),
         occupied_squares: Vec<Vec<(usize, usize)>>,
-        grid_size: (usize, usize),
     ) -> PyResult<Py<PyList>> {
-        let path_res = Self::get_path_rust(self, start, goal, occupied_squares, grid_size, false);
+        let path_res = Self::get_path_rust(self, start, goal, occupied_squares, false);
         return match path_res {
             Ok(path) => {
                 let python_path = PyList::empty(_py);

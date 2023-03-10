@@ -10,11 +10,12 @@ class AStar:
 
     @classmethod
     def get_path(
-            start: Tuple[int, int],
-            goal: Tuple[int, int],
-            occupied_squares: List[List[Tuple[int, int]]],
-            grid_size: Tuple[int, int],
-        ) -> List[Tuple[int, int]]:
+        self,
+        start: Tuple[int, int],
+        goal: Tuple[int, int],
+        occupied_squares: List[List[Tuple[int, int]]],
+        grid_size: Tuple[int, int],
+    ) -> List[Tuple[int, int]]:
         """
         Gets the path as a list of squares.
         """
@@ -34,6 +35,7 @@ class DStar:
 
     @classmethod
     def get_path(
+        self,
         start: Tuple[int, int],
         goal: Tuple[int, int],
         occupied_squares: List[List[Tuple[int, int]]],

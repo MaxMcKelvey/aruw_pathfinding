@@ -34,3 +34,9 @@ grid_size = (2, 2)
 
 path = astar.get_path(start, goal, occupied_squares, grid_size)
 ```
+
+## Look here in the future
+
+- https://github.com/PyO3/pyo3
+- https://github.com/mdeyo/d-star-lite/blob/master/grid.py
+
